@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+</head>
+
+<body>
+    <header class="header">Cow Diseases Finder</header>
+    <div class="card">
+        <div class="left-container" id="left-container"></div>
+        <button class="btn start-button" id="start-button" type="button" onclick="startOrRestart()">Start</button>
+        <!-- <button class="btn stop-button" id="stop-button" type="button" onclick="stop()">Stop</button> -->
+        <div class="right-container">
+            <h3 class="gradienttext" id="gradienttext">Result</h3>
+
+        </div>
+    </div>
+
+</body>
+<script type="text/javascript">
+    let model, webcam, labelContainer, maxPredictions;
+    const URL = "/";
+    let isRunning = false;
+
+    document.getElementById("stop-button").addEventListener("click", stop);
+
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        const flip = true;
+        webcam = new tmImage.Webcam(400, 520, flip);
+        await webcam.setup();
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        document.getElementById("left-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("gradienttext");
+        for (let i = 0; i < maxPredictions; i++) {
+            labelContainer.appendChild(document.createElement("div"));
+        }
+    }
+
+    async function loop() {
+        if (isRunning) {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+    }
+
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction = prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
+
+            // Check if the probability is greater than 50%
+            if (prediction[i].probability * 100 > 50) {
+                labelContainer.childNodes[i].innerHTML = classPrediction + " (Highly Infected)";
+            } else {
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+    }
+
+
+    function startOrRestart() {
+        if (isRunning) {
+            stop();
+        } else {
+            init();
+            isRunning = true;
+            document.getElementById("start-button").textContent = "Stop";
+        }
+    }
+
+    function stop() {
+        if (webcam) {
+            webcam.stop();
+        }
+        isRunning = false;
+        document.getElementById("left-container").innerHTML = "";
+        document.getElementById("start-button").textContent = "Start";
+    }
+</script>
+
+</html>
